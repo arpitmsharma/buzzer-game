@@ -11,6 +11,7 @@ class BuzzerComponent {
         this.buzzerEmoji = document.getElementById('buzzer-emoji');
         this.progressCircle = document.getElementById('progress-circle');
         this.progressText = document.getElementById('progress-text');
+        this.buzzerContainer = document.getElementById('buzzer-container');
 
         this.currentColor = 'neutral';
         this.currentEmoji = null;
@@ -19,6 +20,88 @@ class BuzzerComponent {
         this.colorChangeInterval = null;
         this.pulseInterval = null;
         this.emojiInterval = null;
+
+        // Rule hint element
+        this.ruleHint = null;
+    }
+
+    /**
+     * Create sparkle effect on button
+     */
+    createSparkles(count = 8) {
+        const rect = this.buzzer.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const radius = rect.width / 2;
+
+        for (let i = 0; i < count; i++) {
+            const angle = (Math.PI * 2 * i) / count;
+            const x = centerX + Math.cos(angle) * radius * 0.8;
+            const y = centerY + Math.sin(angle) * radius * 0.8;
+
+            const sparkle = document.createElement('div');
+            sparkle.className = 'sparkle';
+            sparkle.style.position = 'fixed';
+            sparkle.style.left = `${x}px`;
+            sparkle.style.top = `${y}px`;
+            sparkle.style.animationDelay = `${i * 0.1}s`;
+
+            document.body.appendChild(sparkle);
+
+            setTimeout(() => sparkle.remove(), 1500);
+        }
+    }
+
+    /**
+     * Create success wave effect
+     */
+    createSuccessWave() {
+        const wave = document.createElement('div');
+        wave.className = 'success-wave';
+        this.buzzer.appendChild(wave);
+
+        setTimeout(() => wave.remove(), 600);
+    }
+
+    /**
+     * Show rule hint on button
+     */
+    showRuleHint(ruleText) {
+        // Remove existing hint
+        if (this.ruleHint) {
+            this.ruleHint.remove();
+        }
+
+        // Create new hint
+        this.ruleHint = document.createElement('div');
+        this.ruleHint.className = 'rule-hint';
+        this.ruleHint.textContent = ruleText;
+        this.buzzerContainer.appendChild(this.ruleHint);
+
+        // Animate in
+        gsap.fromTo(this.ruleHint,
+            { opacity: 0, y: -20 },
+            { opacity: 1, y: 0, duration: 0.3, ease: 'back.out(1.7)' }
+        );
+    }
+
+    /**
+     * Hide rule hint
+     */
+    hideRuleHint() {
+        if (this.ruleHint) {
+            gsap.to(this.ruleHint, {
+                opacity: 0,
+                y: 10,
+                duration: 0.2,
+                onComplete: () => {
+                    if (this.ruleHint) {
+                        this.ruleHint.remove();
+                        this.ruleHint = null;
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -62,6 +145,14 @@ class BuzzerComponent {
             // Emoji entering
             this.currentEmoji = emoji;
             this.buzzerEmoji.textContent = emoji;
+
+            // Play emoji appear sound
+            if (window.soundManager) {
+                window.soundManager.playEmojiAppear();
+            }
+
+            // Create sparkles for emoji appearance
+            this.createSparkles(6);
 
             // GSAP: Bounce in animation
             gsap.fromTo(this.buzzerEmoji,
@@ -289,6 +380,11 @@ class BuzzerComponent {
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
 
+        // Play explosion sound
+        if (window.soundManager) {
+            window.soundManager.playExplosion();
+        }
+
         // Create particles
         const particleCount = 60;
         const colors = ['#ff0055', '#ff3377', '#ff6699', '#ffaa00', '#ff5500', '#ff0000'];
@@ -355,6 +451,14 @@ class BuzzerComponent {
         const rect = this.buzzer.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
+
+        // Play level up sound
+        if (window.soundManager) {
+            window.soundManager.playLevelUp();
+        }
+
+        // Create sparkles
+        this.createSparkles(12);
 
         // Create fireworks particles
         const particleCount = 40;
@@ -424,6 +528,7 @@ class BuzzerComponent {
         this.stopColorCycle();
         this.stopPulseCycle();
         this.stopEmojiCycle();
+        this.hideRuleHint();
 
         this.setColor('neutral');
         this.setEmoji(null);

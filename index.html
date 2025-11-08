@@ -76,6 +76,11 @@
                 <span class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Score</span>
                 <span id="score-number" class="text-3xl md:text-4xl font-bold text-game-primary drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]">0</span>
             </div>
+            <div class="flex flex-col items-center gap-1">
+                <button id="sound-toggle" class="text-2xl hover:scale-110 transition-transform" title="Toggle Sound">
+                    <span id="sound-icon">🔊</span>
+                </button>
+            </div>
         </header>
 
         <!-- Main Buzzer Area -->
@@ -122,6 +127,14 @@
             <!-- Timer Display (for time-based rules) -->
             <div id="timer-display" class="hidden absolute top-4 right-4 md:top-6 md:right-6 text-2xl font-bold text-game-primary bg-game-primary/10 px-4 py-2 rounded-xl border-2 border-game-primary shadow-[0_0_20px_rgba(0,255,136,0.3)]">
                 <span id="timer-value">0.0</span>s
+            </div>
+
+            <!-- Combo Counter -->
+            <div id="combo-display" class="hidden absolute top-4 left-4 md:top-6 md:left-6">
+                <div class="text-center bg-gradient-to-br from-yellow-400 to-orange-500 px-4 py-2 rounded-xl border-3 border-yellow-300 shadow-[0_0_20px_rgba(255,170,0,0.6)]">
+                    <div class="text-xs font-bold text-white uppercase">Combo</div>
+                    <div id="combo-value" class="text-3xl font-black text-white neon-text">0</div>
+                </div>
             </div>
         </main>
 
@@ -196,6 +209,7 @@
     </div>
 
     <!-- JavaScript -->
+    <script src="js/sound.js"></script>
     <script src="js/rules.js"></script>
     <script src="js/buzzer.js"></script>
     <script src="js/game.js"></script>

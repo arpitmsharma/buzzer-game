@@ -8,6 +8,8 @@ class BuzzerGame {
         // Initialize components
         this.ruleSystem = new RuleSystem();
         this.buzzerComponent = new BuzzerComponent();
+        this.soundManager = new SoundManager();
+        window.soundManager = this.soundManager; // Make available globally
 
         // Game state
         this.gameState = {
@@ -22,6 +24,8 @@ class BuzzerGame {
             buzzerEmoji: null,
             buzzerEmojiTime: null,
             buzzerPulsing: false,
+            comboCount: 0,
+            currentRule: null,
         };
 
         // Level configuration
@@ -42,6 +46,10 @@ class BuzzerGame {
         this.gameOverScreen = document.getElementById('game-over-screen');
         this.timerDisplay = document.getElementById('timer-display');
         this.timerValue = document.getElementById('timer-value');
+        this.comboDisplay = document.getElementById('combo-display');
+        this.comboValue = document.getElementById('combo-value');
+        this.soundToggle = document.getElementById('sound-toggle');
+        this.soundIcon = document.getElementById('sound-icon');
 
         // Intervals
         this.gameLoopInterval = null;
@@ -54,7 +62,13 @@ class BuzzerGame {
      */
     init() {
         // Buzzer click handler
-        this.buzzerComponent.buzzer.addEventListener('click', () => this.handleBuzzerPress());
+        this.buzzerComponent.buzzer.addEventListener('click', () => {
+            // Initialize sound on first interaction
+            if (!this.soundManager.initialized) {
+                this.soundManager.init();
+            }
+            this.handleBuzzerPress();
+        });
 
         // Restart button handler
         document.getElementById('restart-btn').addEventListener('click', () => this.restart());
@@ -66,6 +80,17 @@ class BuzzerGame {
 
         document.getElementById('close-history').addEventListener('click', () => {
             this.toggleRulesHistory();
+        });
+
+        // Sound toggle handler
+        this.soundToggle.addEventListener('click', () => {
+            const enabled = this.soundManager.toggle();
+            this.soundIcon.textContent = enabled ? '🔊' : '🔇';
+
+            // Play test sound if enabling
+            if (enabled && this.soundManager.initialized) {
+                this.soundManager.playSuccess();
+            }
         });
 
         // Prevent accidental double-tap zoom on mobile
@@ -132,6 +157,9 @@ class BuzzerGame {
 
         if (!validation.valid) {
             // Rule violated - explode!
+            this.gameState.comboCount = 0;
+            this.updateComboDisplay();
+            this.soundManager.playError();
             this.gameOver(validation.violatedRule);
             return;
         }
@@ -140,6 +168,20 @@ class BuzzerGame {
         this.gameState.totalPresses++;
         this.gameState.pressesThisLevel++;
         this.gameState.lastPressTime = Date.now();
+        this.gameState.comboCount++;
+
+        // Play press sound
+        this.soundManager.playPress();
+
+        // Play combo sound if combo > 3
+        if (this.gameState.comboCount > 3) {
+            this.soundManager.playCombo(this.gameState.comboCount);
+        } else {
+            this.soundManager.playSuccess();
+        }
+
+        // Visual feedback
+        this.buzzerComponent.createSuccessWave();
 
         // GSAP: Quick press feedback
         gsap.to(this.buzzerComponent.buzzer, {
@@ -151,6 +193,7 @@ class BuzzerGame {
 
         // Update UI
         this.updateUI();
+        this.updateComboDisplay();
 
         // Check for level up
         if (this.gameState.pressesThisLevel >= this.gameState.pressesRequiredForLevel) {
@@ -331,6 +374,11 @@ class BuzzerGame {
         this.gameState.pressesRequiredForLevel = 0;
         this.gameState.lastPressTime = null;
         this.gameState.elapsedTime = 0;
+        this.gameState.comboCount = 0;
+        this.gameState.currentRule = null;
+
+        // Hide combo display
+        this.comboDisplay.classList.add('hidden');
 
         // Update UI
         this.updateUI();
@@ -355,9 +403,29 @@ class BuzzerGame {
     }
 
     /**
+     * Update combo display
+     */
+    updateComboDisplay() {
+        if (this.gameState.comboCount >= 3) {
+            this.comboDisplay.classList.remove('hidden');
+            this.comboValue.textContent = this.gameState.comboCount;
+
+            // Animate combo counter
+            this.comboDisplay.classList.remove('combo-counter');
+            void this.comboDisplay.offsetWidth; // Trigger reflow
+            this.comboDisplay.classList.add('combo-counter');
+        } else {
+            this.comboDisplay.classList.add('hidden');
+        }
+    }
+
+    /**
      * Show only the current/latest rule
      */
     showCurrentRule(rule) {
+        // Store current rule
+        this.gameState.currentRule = rule;
+
         // Clear current rule display
         this.currentRuleDisplay.innerHTML = '';
 
@@ -374,6 +442,10 @@ class BuzzerGame {
         `;
 
         this.currentRuleDisplay.appendChild(ruleElement);
+
+        // Show rule hint on button
+        const shortDescription = this.getShortRuleDescription(rule);
+        this.buzzerComponent.showRuleHint(shortDescription);
 
         // GSAP: Animate rule entry
         gsap.fromTo(ruleElement,
@@ -396,6 +468,41 @@ class BuzzerGame {
             delay: 4,
             ease: 'power2.out'
         });
+
+        // Hide rule hint after 5 seconds
+        setTimeout(() => {
+            this.buzzerComponent.hideRuleHint();
+        }, 5000);
+    }
+
+    /**
+     * Get a short version of the rule description for button display
+     */
+    getShortRuleDescription(rule) {
+        const shortDescriptions = {
+            1: "⏱️ Wait 1s",
+            2: "🦆 Press 2x on duck",
+            3: "🟢 Green only",
+            4: "🔢 Odd seconds",
+            5: "🚀 Avoid rocket",
+            6: "🚫 Wait 2s",
+            7: "⭐ Press 3x on star",
+            8: "2️⃣ Even seconds",
+            9: "🔥 Avoid fire",
+            10: "💫 Pulse only",
+            11: "🐱 Avoid cat",
+            12: "⚡ Quick! <0.6s",
+            13: "💎 Once only",
+            14: "💀 Avoid skull",
+            15: "🌈 Red/Yellow",
+            16: "💣 Super quick! <0.5s",
+            17: "👑 Wait 3s on crown",
+            18: "👽 Once on alien",
+            19: "🌙 Moon at 5s intervals",
+            20: "👻 REVERSED!"
+        };
+
+        return shortDescriptions[rule.level] || rule.icon + " Active";
     }
 
     /**
