@@ -1,6 +1,6 @@
 /**
- * BUZZER GAME - MAIN GAME CONTROLLER
- * Manages game state, level progression, and compounding rules
+ * BUZZER GAME - ENHANCED MAIN GAME CONTROLLER
+ * Shows only current rule, forcing players to remember past rules
  */
 
 class BuzzerGame {
@@ -19,39 +19,32 @@ class BuzzerGame {
             lastPressTime: null,
             elapsedTime: 0,
             buzzerColor: 'neutral',
+            buzzerEmoji: null,
+            buzzerEmojiTime: null,
             buzzerPulsing: false,
-            buzzerRotation: null,
-            buzzerGreenTime: null,
-            buzzerFlashing: null,
         };
 
         // Level configuration
         this.levelConfig = {
-            1: 5,    // Level 1 requires 5 presses
-            2: 7,    // Level 2 requires 7 presses
-            3: 10,   // Level 3 requires 10 presses
-            4: 12,
-            5: 15,
-            6: 18,
-            7: 22,
-            8: 25,
-            9: 30,
-            10: 35,
-            11: 40,
-            12: 45,
+            1: 5, 2: 7, 3: 10, 4: 12, 5: 15,
+            6: 18, 7: 22, 8: 25, 9: 30, 10: 35,
+            11: 40, 12: 45, 13: 50, 14: 55, 15: 60,
+            16: 65, 17: 70, 18: 75, 19: 80, 20: 100
         };
 
         // DOM Elements
         this.levelDisplay = document.getElementById('level-number');
         this.scoreDisplay = document.getElementById('score-number');
-        this.rulesListContainer = document.getElementById('rules-list');
+        this.currentRuleDisplay = document.getElementById('current-rule-display');
+        this.rulesHistoryList = document.getElementById('rules-history-list');
+        this.rulesHistoryModal = document.getElementById('rules-history-modal');
+        this.ruleCountDisplay = document.getElementById('rule-count');
         this.gameOverScreen = document.getElementById('game-over-screen');
         this.timerDisplay = document.getElementById('timer-display');
         this.timerValue = document.getElementById('timer-value');
 
         // Intervals
         this.gameLoopInterval = null;
-        this.colorCycleInterval = null;
 
         this.init();
     }
@@ -66,12 +59,29 @@ class BuzzerGame {
         // Restart button handler
         document.getElementById('restart-btn').addEventListener('click', () => this.restart());
 
+        // Rules history toggle
+        document.getElementById('toggle-rules-history').addEventListener('click', () => {
+            this.toggleRulesHistory();
+        });
+
+        document.getElementById('close-history').addEventListener('click', () => {
+            this.toggleRulesHistory();
+        });
+
         // Prevent accidental double-tap zoom on mobile
         this.buzzerComponent.buzzer.addEventListener('touchend', (e) => {
             e.preventDefault();
         }, { passive: false });
 
         this.updateUI();
+    }
+
+    /**
+     * Toggle rules history modal
+     */
+    toggleRulesHistory() {
+        this.rulesHistoryModal.classList.toggle('hidden');
+        this.updateRulesHistory();
     }
 
     /**
@@ -89,7 +99,7 @@ class BuzzerGame {
         // Add first rule
         const firstRule = this.ruleSystem.addRuleForLevel(1);
         if (firstRule) {
-            this.addRuleToUI(firstRule);
+            this.showCurrentRule(firstRule);
         }
 
         this.buzzerComponent.setStatus('GO!');
@@ -131,6 +141,14 @@ class BuzzerGame {
         this.gameState.pressesThisLevel++;
         this.gameState.lastPressTime = Date.now();
 
+        // GSAP: Quick press feedback
+        gsap.to(this.buzzerComponent.buzzer, {
+            scale: 0.95,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1
+        });
+
         // Update UI
         this.updateUI();
 
@@ -151,8 +169,8 @@ class BuzzerGame {
     updateGameState() {
         const buzzerState = this.buzzerComponent.getState();
         this.gameState.buzzerColor = buzzerState.color;
+        this.gameState.buzzerEmoji = buzzerState.emoji;
         this.gameState.buzzerPulsing = buzzerState.pulsing;
-        this.gameState.buzzerRotation = buzzerState.rotation;
     }
 
     /**
@@ -161,12 +179,12 @@ class BuzzerGame {
     levelUp() {
         this.gameState.currentLevel++;
         this.gameState.pressesThisLevel = 0;
-        this.gameState.pressesRequiredForLevel = this.levelConfig[this.gameState.currentLevel] || 50;
+        this.gameState.pressesRequiredForLevel = this.levelConfig[this.gameState.currentLevel] || 100;
 
         // Add new rule for this level
         const newRule = this.ruleSystem.addRuleForLevel(this.gameState.currentLevel);
         if (newRule) {
-            this.addRuleToUI(newRule);
+            this.showCurrentRule(newRule);
         }
 
         // Celebration!
@@ -185,33 +203,20 @@ class BuzzerGame {
     activateLevelFeatures() {
         const level = this.gameState.currentLevel;
 
-        // Level 2+: Start color cycling
-        if (level >= 2) {
+        // Level 2+: Start emoji cycling
+        const activeEmojis = this.ruleSystem.getActiveEmojis();
+        if (activeEmojis.length > 0) {
+            this.buzzerComponent.startEmojiCycle(activeEmojis, 3500);
+        }
+
+        // Level 3+: Start color cycling
+        if (level >= 3) {
             this.buzzerComponent.startColorCycle(2500);
         }
 
-        // Level 6+: Start pulse cycling
-        if (level >= 6) {
+        // Level 10+: Start pulse cycling
+        if (level >= 10) {
             this.buzzerComponent.startPulseCycle(3000);
-        }
-
-        // Level 12+: Start rotation
-        if (level >= 12) {
-            // Alternate rotation direction
-            const direction = Math.random() > 0.5 ? 'clockwise' : 'counterclockwise';
-            this.buzzerComponent.setRotation(direction);
-            this.gameState.buzzerRotation = direction;
-
-            // Change rotation occasionally
-            if (this.rotationInterval) {
-                clearInterval(this.rotationInterval);
-            }
-
-            this.rotationInterval = setInterval(() => {
-                const newDirection = Math.random() > 0.5 ? 'clockwise' : 'counterclockwise';
-                this.buzzerComponent.setRotation(newDirection);
-                this.gameState.buzzerRotation = newDirection;
-            }, 5000);
         }
     }
 
@@ -233,15 +238,14 @@ class BuzzerGame {
                 this.timerDisplay.classList.remove('hidden');
             }
 
-            // Track when buzzer turns green (for reaction time rule)
+            // Track when emoji changes (for reaction time rules)
             const buzzerState = this.buzzerComponent.getState();
-            if (buzzerState.color === 'green' && this.gameState.buzzerColor !== 'green') {
-                this.gameState.buzzerGreenTime = Date.now();
+            if (buzzerState.emoji !== this.gameState.buzzerEmoji) {
+                this.gameState.buzzerEmojiTime = Date.now();
             }
-            this.gameState.buzzerColor = buzzerState.color;
 
-            // Update rule warnings
-            this.updateRuleWarnings();
+            // Update state
+            this.updateGameState();
 
         }, 100); // Update 10 times per second
     }
@@ -254,39 +258,10 @@ class BuzzerGame {
             clearInterval(this.gameLoopInterval);
             this.gameLoopInterval = null;
         }
-
-        if (this.rotationInterval) {
-            clearInterval(this.rotationInterval);
-            this.rotationInterval = null;
-        }
-    }
-
-    /**
-     * Update visual warnings for rules about to be violated
-     */
-    updateRuleWarnings() {
-        const warnings = this.ruleSystem.getWarningRules(this.gameState);
-        const ruleElements = this.rulesListContainer.querySelectorAll('.rule-item');
-
-        ruleElements.forEach(el => {
-            el.classList.remove('rule-warning', 'rule-danger', 'animate-shake');
-        });
-
-        warnings.forEach(({ rule, level }) => {
-            const ruleElement = this.rulesListContainer.querySelector(`[data-rule-id="${rule.id}"]`);
-            if (ruleElement) {
-                if (level === 'danger') {
-                    ruleElement.classList.add('rule-danger', 'animate-shake');
-                } else if (level === 'warning') {
-                    ruleElement.classList.add('rule-warning');
-                }
-            }
-        });
     }
 
     /**
      * Game over - show explosion and game over screen
-     * @param {Object} violatedRule - The rule that was violated
      */
     gameOver(violatedRule) {
         this.gameState.status = 'gameOver';
@@ -307,22 +282,33 @@ class BuzzerGame {
             document.getElementById('violation-message').textContent = violatedRule.violationMessage;
 
             this.gameOverScreen.classList.remove('hidden');
-            setTimeout(() => {
-                this.gameOverScreen.classList.remove('opacity-0', 'pointer-events-none');
-                this.gameOverScreen.classList.add('opacity-100');
-            }, 10);
-        }, 500);
+
+            // GSAP: Fade in game over screen
+            gsap.fromTo(this.gameOverScreen,
+                { opacity: 0 },
+                {
+                    opacity: 1,
+                    duration: 0.5,
+                    onStart: () => {
+                        this.gameOverScreen.classList.remove('pointer-events-none');
+                    }
+                }
+            );
+        }, 800);
     }
 
     /**
      * Restart the game
      */
     restart() {
-        // Hide game over screen
-        this.gameOverScreen.classList.add('opacity-0', 'pointer-events-none');
-        setTimeout(() => {
-            this.gameOverScreen.classList.add('hidden');
-        }, 500);
+        // GSAP: Fade out game over screen
+        gsap.to(this.gameOverScreen, {
+            opacity: 0,
+            duration: 0.3,
+            onComplete: () => {
+                this.gameOverScreen.classList.add('hidden', 'pointer-events-none');
+            }
+        });
 
         // Reset rule system
         this.ruleSystem.reset();
@@ -331,8 +317,8 @@ class BuzzerGame {
         this.buzzerComponent.reset();
         this.buzzerComponent.setEnabled(true);
 
-        // Clear rules UI
-        this.rulesListContainer.innerHTML = '<p class="text-gray-400 italic text-center py-4">Press the buzzer to begin...</p>';
+        // Clear current rule display
+        this.currentRuleDisplay.innerHTML = '<p class="text-gray-400 italic text-center">Press the buzzer to begin...</p>';
 
         // Hide timer
         this.timerDisplay.classList.add('hidden');
@@ -357,6 +343,9 @@ class BuzzerGame {
         this.levelDisplay.textContent = this.gameState.currentLevel;
         this.scoreDisplay.textContent = this.gameState.totalPresses;
 
+        const activeRules = this.ruleSystem.getActiveRules();
+        this.ruleCountDisplay.textContent = activeRules.length;
+
         if (this.gameState.status === 'playing') {
             this.buzzerComponent.updateProgress(
                 this.gameState.pressesThisLevel,
@@ -366,34 +355,87 @@ class BuzzerGame {
     }
 
     /**
-     * Add rule to UI
-     * @param {Object} rule - Rule to add
+     * Show only the current/latest rule
      */
-    addRuleToUI(rule) {
-        // Remove "no rules" message if present
-        const noRulesMsg = this.rulesListContainer.querySelector('.text-gray-400');
-        if (noRulesMsg) {
-            noRulesMsg.remove();
-        }
+    showCurrentRule(rule) {
+        // Clear current rule display
+        this.currentRuleDisplay.innerHTML = '';
 
+        // Create rule element
         const ruleElement = document.createElement('div');
-        ruleElement.className = 'rule-item flex items-center gap-3 p-3 bg-white/5 rounded-xl border-l-4 border-game-primary transition-all duration-300 animate-slide-in';
-        ruleElement.dataset.ruleId = rule.id;
+        ruleElement.className = 'flex items-center gap-4 p-4 bg-game-primary/10 rounded-xl border-2 border-game-primary';
 
         ruleElement.innerHTML = `
-            <div class="rule-icon text-xl flex-shrink-0">${rule.icon}</div>
-            <div class="rule-text flex-1 text-sm leading-relaxed">${rule.description}</div>
-            <div class="rule-level text-xs text-gray-400 bg-white/10 px-2 py-1 rounded-full flex-shrink-0">
-                Lvl ${rule.level}
+            <div class="text-4xl flex-shrink-0">${rule.icon}</div>
+            <div class="flex-1">
+                <div class="text-sm text-gray-400 uppercase tracking-wide mb-1">Level ${rule.level} Rule</div>
+                <div class="text-base md:text-lg font-semibold leading-relaxed text-white">${rule.description}</div>
             </div>
         `;
 
-        this.rulesListContainer.appendChild(ruleElement);
+        this.currentRuleDisplay.appendChild(ruleElement);
 
-        // Scroll to show new rule
-        setTimeout(() => {
-            ruleElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }, 100);
+        // GSAP: Animate rule entry
+        gsap.fromTo(ruleElement,
+            {
+                x: -100,
+                opacity: 0
+            },
+            {
+                x: 0,
+                opacity: 1,
+                duration: 0.6,
+                ease: 'back.out(1.2)'
+            }
+        );
+
+        // Fade out after a few seconds
+        gsap.to(ruleElement, {
+            opacity: 0.6,
+            duration: 1,
+            delay: 4,
+            ease: 'power2.out'
+        });
+    }
+
+    /**
+     * Update rules history in modal
+     */
+    updateRulesHistory() {
+        this.rulesHistoryList.innerHTML = '';
+
+        const activeRules = this.ruleSystem.getActiveRules();
+
+        if (activeRules.length === 0) {
+            this.rulesHistoryList.innerHTML = '<p class="text-gray-400 italic text-center py-4">No rules yet</p>';
+            return;
+        }
+
+        activeRules.forEach((rule, index) => {
+            const ruleElement = document.createElement('div');
+            ruleElement.className = 'flex items-center gap-3 p-3 bg-white/5 rounded-xl border-l-4 border-game-primary/50';
+
+            ruleElement.innerHTML = `
+                <div class="text-2xl flex-shrink-0">${rule.icon}</div>
+                <div class="flex-1">
+                    <div class="text-xs text-gray-400 mb-1">Level ${rule.level}</div>
+                    <div class="text-sm leading-relaxed">${rule.description}</div>
+                </div>
+            `;
+
+            this.rulesHistoryList.appendChild(ruleElement);
+
+            // GSAP: Stagger animation
+            gsap.fromTo(ruleElement,
+                { opacity: 0, y: 20 },
+                {
+                    opacity: 1,
+                    y: 0,
+                    duration: 0.3,
+                    delay: index * 0.05
+                }
+            );
+        });
     }
 }
 

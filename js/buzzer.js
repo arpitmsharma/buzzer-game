@@ -1,6 +1,6 @@
 /**
- * BUZZER GAME - BUZZER COMPONENT
- * Manages buzzer visual states, animations, and interactions
+ * BUZZER GAME - ENHANCED BUZZER COMPONENT
+ * Uses GSAP for professional animations and emoji support
  */
 
 class BuzzerComponent {
@@ -8,22 +8,21 @@ class BuzzerComponent {
         this.buzzer = document.getElementById('buzzer');
         this.buzzerGlow = document.getElementById('buzzer-glow');
         this.buzzerStatus = document.getElementById('buzzer-status');
+        this.buzzerEmoji = document.getElementById('buzzer-emoji');
         this.progressCircle = document.getElementById('progress-circle');
         this.progressText = document.getElementById('progress-text');
 
         this.currentColor = 'neutral';
+        this.currentEmoji = null;
         this.isPulsing = false;
-        this.isRotating = false;
-        this.rotationDirection = null;
 
         this.colorChangeInterval = null;
         this.pulseInterval = null;
-        this.rotationInterval = null;
+        this.emojiInterval = null;
     }
 
     /**
-     * Set buzzer color state
-     * @param {string} color - 'neutral', 'green', 'red', 'yellow'
+     * Set buzzer color state with GSAP animation
      */
     setColor(color) {
         this.currentColor = color;
@@ -44,67 +43,144 @@ class BuzzerComponent {
         if (color !== 'neutral') {
             this.buzzer.classList.add(`state-${color}`);
         }
+
+        // GSAP: Animate color transition
+        gsap.to(this.buzzerGlow, {
+            opacity: color === 'neutral' ? 0.5 : 0.9,
+            duration: 0.3,
+            ease: 'power2.out'
+        });
+    }
+
+    /**
+     * Set emoji on buzzer with enter/exit animations
+     */
+    setEmoji(emoji) {
+        if (emoji === this.currentEmoji) return;
+
+        if (emoji) {
+            // Emoji entering
+            this.currentEmoji = emoji;
+            this.buzzerEmoji.textContent = emoji;
+
+            // GSAP: Bounce in animation
+            gsap.fromTo(this.buzzerEmoji,
+                {
+                    scale: 0,
+                    rotation: -180,
+                    opacity: 0
+                },
+                {
+                    scale: 1,
+                    rotation: 0,
+                    opacity: 1,
+                    duration: 0.5,
+                    ease: 'back.out(1.7)'
+                }
+            );
+
+            // Hide status text when emoji is showing
+            gsap.to(this.buzzerStatus, {
+                opacity: 0,
+                scale: 0.8,
+                duration: 0.2
+            });
+        } else {
+            // Emoji exiting
+            if (this.currentEmoji) {
+                // GSAP: Bounce out animation
+                gsap.to(this.buzzerEmoji, {
+                    scale: 0,
+                    rotation: 180,
+                    opacity: 0,
+                    duration: 0.3,
+                    ease: 'back.in(1.7)',
+                    onComplete: () => {
+                        this.buzzerEmoji.textContent = '';
+                        this.currentEmoji = null;
+                    }
+                });
+
+                // Show status text again
+                gsap.to(this.buzzerStatus, {
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.2,
+                    delay: 0.1
+                });
+            }
+        }
     }
 
     /**
      * Update buzzer status text
-     * @param {string} text - Status text to display
      */
     setStatus(text) {
         this.buzzerStatus.textContent = text;
     }
 
     /**
-     * Update progress ring
-     * @param {number} current - Current progress
-     * @param {number} total - Total required
+     * Update progress ring with GSAP animation
      */
     updateProgress(current, total) {
         this.progressText.textContent = `${current}/${total}`;
 
-        // Calculate progress percentage
         const percentage = total > 0 ? current / total : 0;
-        const circumference = 565.48; // 2 * PI * r (r=90)
+        const circumference = 565.48;
         const offset = circumference - (percentage * circumference);
 
-        this.progressCircle.style.strokeDashoffset = offset;
+        // GSAP: Animate progress ring
+        gsap.to(this.progressCircle, {
+            strokeDashoffset: offset,
+            duration: 0.5,
+            ease: 'power2.out'
+        });
+
+        // Color change based on progress
+        const progressColor = percentage < 0.3 ? '#00ff88' :
+                            percentage < 0.7 ? '#ffaa00' : '#ff0055';
+
+        gsap.to(this.progressCircle, {
+            stroke: progressColor,
+            duration: 0.3
+        });
     }
 
     /**
-     * Set pulsing state
-     * @param {boolean} pulsing - Whether buzzer should pulse
+     * Set pulsing state with GSAP
      */
     setPulsing(pulsing) {
         this.isPulsing = pulsing;
 
         if (pulsing) {
-            this.buzzer.classList.add('buzzer-pulse-green');
+            // GSAP: Continuous pulse animation
+            gsap.to(this.buzzer, {
+                scale: 1.05,
+                duration: 0.8,
+                ease: 'power1.inOut',
+                yoyo: true,
+                repeat: -1
+            });
+
+            gsap.to(this.buzzerGlow, {
+                opacity: 1,
+                duration: 0.8,
+                ease: 'power1.inOut',
+                yoyo: true,
+                repeat: -1
+            });
         } else {
-            this.buzzer.classList.remove('buzzer-pulse-green');
+            // Stop pulsing
+            gsap.killTweensOf(this.buzzer);
+            gsap.to(this.buzzer, {
+                scale: 1,
+                duration: 0.3
+            });
         }
     }
 
     /**
-     * Set rotation state
-     * @param {string} direction - 'clockwise', 'counterclockwise', or null
-     */
-    setRotation(direction) {
-        // Remove existing rotation classes
-        this.buzzer.classList.remove('rotate-clockwise', 'rotate-counterclockwise');
-
-        if (direction) {
-            this.isRotating = true;
-            this.rotationDirection = direction;
-            this.buzzer.classList.add(`rotate-${direction}`);
-        } else {
-            this.isRotating = false;
-            this.rotationDirection = null;
-        }
-    }
-
-    /**
-     * Start automatic color changing (for visual rules)
-     * @param {number} interval - Time between color changes in ms
+     * Start automatic color changing
      */
     startColorCycle(interval = 2000) {
         this.stopColorCycle();
@@ -129,8 +205,7 @@ class BuzzerComponent {
     }
 
     /**
-     * Start pulse cycle (for visual rules)
-     * @param {number} interval - Time between pulses in ms
+     * Start pulse cycle
      */
     startPulseCycle(interval = 3000) {
         this.stopPulseCycle();
@@ -155,21 +230,58 @@ class BuzzerComponent {
     }
 
     /**
-     * Flash buzzer briefly
-     * @param {string} color - Color to flash
-     * @param {number} duration - Flash duration in ms
+     * Start emoji cycle based on active emojis
      */
-    flash(color, duration = 200) {
-        const originalColor = this.currentColor;
-        this.setColor(color);
+    startEmojiCycle(emojis, interval = 3000) {
+        this.stopEmojiCycle();
 
-        setTimeout(() => {
-            this.setColor(originalColor);
-        }, duration);
+        if (emojis.length === 0) return;
+
+        let currentIndex = 0;
+
+        // Show first emoji immediately
+        this.setEmoji(emojis[currentIndex].emoji);
+
+        this.emojiInterval = setInterval(() => {
+            currentIndex = (currentIndex + 1) % emojis.length;
+            this.setEmoji(emojis[currentIndex].emoji);
+        }, interval);
     }
 
     /**
-     * Trigger explosion animation
+     * Stop emoji cycle
+     */
+    stopEmojiCycle() {
+        if (this.emojiInterval) {
+            clearInterval(this.emojiInterval);
+            this.emojiInterval = null;
+        }
+        this.setEmoji(null);
+    }
+
+    /**
+     * Flash buzzer briefly
+     */
+    flash(color, duration = 200) {
+        const originalColor = this.currentColor;
+
+        // GSAP: Quick flash
+        gsap.to(this.buzzerGlow, {
+            opacity: 1,
+            duration: 0.1,
+            onStart: () => {
+                this.setColor(color);
+            },
+            onComplete: () => {
+                setTimeout(() => {
+                    this.setColor(originalColor);
+                }, duration);
+            }
+        });
+    }
+
+    /**
+     * Trigger explosion animation with GSAP
      */
     explode() {
         const explosionContainer = document.getElementById('explosion-container');
@@ -178,42 +290,65 @@ class BuzzerComponent {
         const centerY = rect.top + rect.height / 2;
 
         // Create particles
-        const particleCount = 50;
-        const colors = ['#ff0055', '#ff3377', '#ff6699', '#ffaa00', '#ff5500'];
+        const particleCount = 60;
+        const colors = ['#ff0055', '#ff3377', '#ff6699', '#ffaa00', '#ff5500', '#ff0000'];
 
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
-            particle.classList.add('particle');
-
-            const angle = (Math.PI * 2 * i) / particleCount;
-            const velocity = 100 + Math.random() * 200;
-            const tx = Math.cos(angle) * velocity;
-            const ty = Math.sin(angle) * velocity;
-
+            particle.style.position = 'absolute';
             particle.style.left = `${centerX}px`;
             particle.style.top = `${centerY}px`;
+            particle.style.width = '12px';
+            particle.style.height = '12px';
+            particle.style.borderRadius = '50%';
             particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-            particle.style.setProperty('--tx', `${tx}px`);
-            particle.style.setProperty('--ty', `${ty}px`);
+            particle.style.pointerEvents = 'none';
 
             explosionContainer.appendChild(particle);
 
-            // Remove particle after animation
-            setTimeout(() => particle.remove(), 800);
+            const angle = (Math.PI * 2 * i) / particleCount;
+            const velocity = 150 + Math.random() * 250;
+            const tx = Math.cos(angle) * velocity;
+            const ty = Math.sin(angle) * velocity;
+
+            // GSAP: Particle explosion animation
+            gsap.to(particle, {
+                x: tx,
+                y: ty,
+                opacity: 0,
+                scale: 0,
+                duration: 0.8 + Math.random() * 0.4,
+                ease: 'power2.out',
+                onComplete: () => particle.remove()
+            });
         }
 
-        // Screen shake
-        document.getElementById('game-container').classList.add('screen-shake');
-        setTimeout(() => {
-            document.getElementById('game-container').classList.remove('screen-shake');
-        }, 500);
+        // Screen shake with GSAP
+        const gameContainer = document.getElementById('game-container');
+        gsap.to(gameContainer, {
+            x: -10,
+            duration: 0.05,
+            yoyo: true,
+            repeat: 10,
+            ease: 'power1.inOut',
+            onComplete: () => {
+                gsap.set(gameContainer, { x: 0 });
+            }
+        });
 
-        // Buzzer flash effect
+        // Buzzer shake and flash
+        gsap.to(this.buzzer, {
+            scale: 0.9,
+            duration: 0.1,
+            yoyo: true,
+            repeat: 1
+        });
+
         this.setColor('red');
     }
 
     /**
-     * Trigger level up celebration
+     * Trigger level up celebration with GSAP
      */
     celebrateLevelUp() {
         const explosionContainer = document.getElementById('explosion-container');
@@ -221,71 +356,114 @@ class BuzzerComponent {
         const centerX = rect.left + rect.width / 2;
         const centerY = rect.top + rect.height / 2;
 
-        // Create confetti/fireworks
-        const particleCount = 30;
+        // Create fireworks particles
+        const particleCount = 40;
 
         for (let i = 0; i < particleCount; i++) {
             const particle = document.createElement('div');
-            particle.classList.add('firework-particle');
-
-            const angle = (Math.PI * 2 * i) / particleCount;
-            const distance = 150 + Math.random() * 100;
-            const fx = Math.cos(angle) * distance;
-            const fy = Math.sin(angle) * distance;
-
+            particle.style.position = 'absolute';
             particle.style.left = `${centerX}px`;
             particle.style.top = `${centerY}px`;
-            particle.style.setProperty('--fx', `${fx}px`);
-            particle.style.setProperty('--fy', `${fy}px`);
-            particle.style.setProperty('--color', '#00ff88');
+            particle.style.width = '8px';
+            particle.style.height = '8px';
+            particle.style.borderRadius = '50%';
+            particle.style.background = '#00ff88';
+            particle.style.boxShadow = '0 0 10px #00ff88';
+            particle.style.pointerEvents = 'none';
 
             explosionContainer.appendChild(particle);
 
-            setTimeout(() => particle.remove(), 1000);
+            const angle = (Math.PI * 2 * i) / particleCount;
+            const distance = 180 + Math.random() * 120;
+            const fx = Math.cos(angle) * distance;
+            const fy = Math.sin(angle) * distance;
+
+            // GSAP: Firework animation
+            gsap.to(particle, {
+                x: fx,
+                y: fy,
+                opacity: 0,
+                scale: 0.5,
+                duration: 1,
+                ease: 'power2.out',
+                onComplete: () => particle.remove()
+            });
         }
 
-        // Level up animation on buzzer
-        this.buzzer.classList.add('level-up-animation');
-        setTimeout(() => {
-            this.buzzer.classList.remove('level-up-animation');
-        }, 600);
+        // Buzzer level up animation
+        gsap.timeline()
+            .to(this.buzzer, {
+                scale: 1.2,
+                duration: 0.3,
+                ease: 'back.out(1.7)'
+            })
+            .to(this.buzzer, {
+                scale: 1,
+                duration: 0.3,
+                ease: 'elastic.out(1, 0.5)'
+            });
+
+        // Glow effect
+        gsap.to(this.buzzerGlow, {
+            opacity: 1,
+            scale: 1.3,
+            duration: 0.3,
+            yoyo: true,
+            repeat: 1
+        });
     }
 
     /**
      * Reset buzzer to initial state
      */
     reset() {
+        gsap.killTweensOf(this.buzzer);
+        gsap.killTweensOf(this.buzzerGlow);
+        gsap.killTweensOf(this.buzzerEmoji);
+
         this.stopColorCycle();
         this.stopPulseCycle();
-        this.setRotation(null);
+        this.stopEmojiCycle();
+
         this.setColor('neutral');
+        this.setEmoji(null);
         this.setStatus('PRESS TO START');
         this.updateProgress(0, 0);
-        this.buzzer.classList.remove('screen-shake', 'level-up-animation');
+
+        gsap.set(this.buzzer, { scale: 1 });
+        gsap.set(this.buzzerGlow, { opacity: 0.5 });
+        gsap.set(this.buzzerStatus, { opacity: 1, scale: 1 });
     }
 
     /**
      * Enable/disable buzzer interaction
-     * @param {boolean} enabled - Whether buzzer is enabled
      */
     setEnabled(enabled) {
         this.buzzer.disabled = !enabled;
+
         if (!enabled) {
-            this.buzzer.classList.add('opacity-50', 'cursor-not-allowed');
+            gsap.to(this.buzzer, {
+                opacity: 0.5,
+                duration: 0.3
+            });
+            this.buzzer.classList.add('cursor-not-allowed');
         } else {
-            this.buzzer.classList.remove('opacity-50', 'cursor-not-allowed');
+            gsap.to(this.buzzer, {
+                opacity: 1,
+                duration: 0.3
+            });
+            this.buzzer.classList.remove('cursor-not-allowed');
         }
     }
 
     /**
      * Get current state for rule validation
-     * @returns {Object} Current buzzer state
      */
     getState() {
         return {
             color: this.currentColor,
-            pulsing: this.isPulsing,
-            rotation: this.rotationDirection
+            emoji: this.currentEmoji,
+            pulsing: this.isPulsing
         };
     }
 }
