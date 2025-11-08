@@ -1,0 +1,235 @@
+/* ==========================================
+   BUZZER GAME - CUSTOM ANIMATIONS
+   Explosion effects, particles, and special animations
+   ========================================== */
+
+/* Particle Animation for Explosions */
+@keyframes explode {
+    0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+    }
+}
+
+.particle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: explode 0.8s ease-out forwards;
+}
+
+/* Screen Shake Effect */
+@keyframes screen-shake {
+    0%, 100% { transform: translate(0, 0); }
+    10%, 30%, 50%, 70%, 90% { transform: translate(-10px, 0); }
+    20%, 40%, 60%, 80% { transform: translate(10px, 0); }
+}
+
+.screen-shake {
+    animation: screen-shake 0.5s ease;
+}
+
+/* Buzzer Pulse Glow */
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow:
+            0 10px 40px rgba(0, 0, 0, 0.5),
+            0 0 20px rgba(0, 255, 136, 0.3),
+            inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+        box-shadow:
+            0 10px 60px rgba(0, 0, 0, 0.6),
+            0 0 40px rgba(0, 255, 136, 0.6),
+            inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+}
+
+.buzzer-pulse-green {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Buzzer States - Glow Effects */
+.buzzer-glow-neutral {
+    background: radial-gradient(circle, #4a5568 0%, transparent 70%);
+}
+
+.buzzer-glow-green {
+    background: radial-gradient(circle, #00ff88 0%, transparent 70%);
+    opacity: 0.8;
+}
+
+.buzzer-glow-red {
+    background: radial-gradient(circle, #ff0055 0%, transparent 70%);
+    opacity: 0.9;
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+.buzzer-glow-yellow {
+    background: radial-gradient(circle, #ffaa00 0%, transparent 70%);
+    opacity: 0.7;
+    animation: pulse 1s ease-in-out infinite;
+}
+
+/* Level Up Animation */
+@keyframes level-up {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.2);
+        filter: brightness(1.5);
+    }
+    100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+.level-up-animation {
+    animation: level-up 0.6s ease;
+}
+
+/* Rotating Buzzer (for rules that require rotation) */
+@keyframes rotate-clockwise {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes rotate-counterclockwise {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+
+.rotate-clockwise {
+    animation: rotate-clockwise 4s linear infinite;
+}
+
+.rotate-counterclockwise {
+    animation: rotate-counterclockwise 4s linear infinite;
+}
+
+/* Flash Effect (for warnings) */
+@keyframes flash {
+    0%, 50%, 100% { opacity: 1; }
+    25%, 75% { opacity: 0.3; }
+}
+
+.flash {
+    animation: flash 0.8s ease-in-out;
+}
+
+/* Fireworks Effect (for level completion) */
+@keyframes firework {
+    0% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    100% {
+        transform: translate(var(--fx), var(--fy));
+        opacity: 0;
+    }
+}
+
+.firework-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--color, #00ff88);
+    pointer-events: none;
+    animation: firework 1s ease-out forwards;
+}
+
+/* Progress Ring Fill Animation */
+@keyframes fill-progress {
+    from {
+        stroke-dashoffset: 565.48;
+    }
+    to {
+        stroke-dashoffset: var(--target-offset, 0);
+    }
+}
+
+/* Danger Pulse for Rules */
+@keyframes danger-pulse {
+    0%, 100% {
+        border-left-color: #ff0055;
+        background: rgba(255, 0, 85, 0.1);
+    }
+    50% {
+        border-left-color: #ff3377;
+        background: rgba(255, 0, 85, 0.2);
+    }
+}
+
+.rule-danger-pulse {
+    animation: danger-pulse 0.6s ease-in-out infinite;
+}
+
+/* Fade In Effect */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease;
+}
+
+/* Countdown Timer Pulse */
+@keyframes timer-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.timer-urgent {
+    animation: timer-pulse 0.3s ease-in-out infinite;
+    color: #ff0055 !important;
+    border-color: #ff0055 !important;
+}
+
+/* Confetti Animation (bonus feature) */
+@keyframes confetti-fall {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+    }
+}
+
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--confetti-color, #00ff88);
+    pointer-events: none;
+    animation: confetti-fall var(--fall-duration, 3s) linear forwards;
+}
+
+/* Accessibility - Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="description" content="An exhilarating buzzer game with progressively complex rules">
+    <title>Buzzer Game - Press at Your Own Risk</title>
+
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Custom Tailwind Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'game-bg': '#0f0f1e',
+                        'game-bg-secondary': '#1a1a2e',
+                        'game-bg-tertiary': '#16213e',
+                        'game-primary': '#00ff88',
+                        'game-danger': '#ff0055',
+                        'game-warning': '#ffaa00',
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'bounce-in': 'bounceIn 0.6s ease',
+                        'slide-in': 'slideIn 0.5s ease forwards',
+                        'shake': 'shake 0.5s ease infinite',
+                    },
+                    keyframes: {
+                        bounceIn: {
+                            '0%': { transform: 'scale(0.3)', opacity: '0' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        slideIn: {
+                            '0%': { transform: 'translateX(-100%)', opacity: '0' },
+                            '100%': { transform: 'translateX(0)', opacity: '1' },
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-5px)' },
+                            '75%': { transform: 'translateX(5px)' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom Animations CSS -->
+    <link rel="stylesheet" href="css/animations.css">
+</head>
+<body class="bg-gradient-to-br from-game-bg to-game-bg-secondary min-h-screen overflow-hidden select-none">
+
+    <!-- Game Container -->
+    <div id="game-container" class="flex flex-col h-screen max-w-full overflow-hidden relative">
+
+        <!-- Header -->
+        <header class="flex justify-between items-center px-4 py-3 md:px-6 md:py-4 bg-game-bg-secondary/80 backdrop-blur-lg border-b-2 border-game-primary/20 z-50">
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Level</span>
+                <span id="level-number" class="text-3xl md:text-4xl font-bold text-game-primary drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]">1</span>
+            </div>
+            <div class="flex flex-col items-center gap-1">
+                <span class="text-xs font-semibold tracking-wider text-gray-400 uppercase">Score</span>
+                <span id="score-number" class="text-3xl md:text-4xl font-bold text-game-primary drop-shadow-[0_0_10px_rgba(0,255,136,0.5)]">0</span>
+            </div>
+        </header>
+
+        <!-- Main Buzzer Area -->
+        <main class="flex-1 flex flex-col justify-center items-center p-4 md:p-6 relative overflow-visible">
+            <div id="buzzer-container" class="relative flex flex-col items-center gap-6">
+
+                <!-- Buzzer Button -->
+                <button id="buzzer"
+                        class="relative w-[70vw] h-[70vw] max-w-[280px] max-h-[280px] md:max-w-[320px] md:max-h-[320px] lg:max-w-[350px] lg:max-h-[350px] rounded-full bg-gradient-to-br from-gray-700 to-gray-900 shadow-2xl active:scale-95 transition-all duration-300 overflow-visible focus:outline-none focus:ring-4 focus:ring-game-primary/50"
+                        aria-label="Press the buzzer">
+
+                    <!-- Glow Effect -->
+                    <div id="buzzer-glow" class="absolute inset-0 rounded-full opacity-50 pointer-events-none transition-all duration-300"></div>
+
+                    <!-- Progress Ring -->
+                    <div class="absolute -inset-[10px] pointer-events-none">
+                        <svg class="w-full h-full -rotate-90" viewBox="0 0 200 200">
+                            <circle cx="100" cy="100" r="90"
+                                    class="fill-none stroke-game-primary stroke-[4] [stroke-linecap:round] transition-all duration-300"
+                                    style="stroke-dasharray: 565.48; stroke-dashoffset: 565.48; filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.6));"
+                                    id="progress-circle"></circle>
+                        </svg>
+                    </div>
+
+                    <!-- Buzzer Text -->
+                    <div class="absolute inset-0 flex items-center justify-center z-10 p-6">
+                        <span id="buzzer-status" class="text-lg md:text-xl font-bold tracking-wide text-white text-center drop-shadow-lg">
+                            PRESS TO START
+                        </span>
+                    </div>
+                </button>
+
+                <!-- Level Progress -->
+                <div class="text-lg md:text-xl font-semibold text-game-primary text-center px-4 py-2 bg-game-primary/10 rounded-xl min-w-[80px]">
+                    <span id="progress-text">0/0</span>
+                </div>
+            </div>
+
+            <!-- Timer Display (for time-based rules) -->
+            <div id="timer-display" class="hidden absolute top-4 right-4 md:top-6 md:right-6 text-2xl font-bold text-game-primary bg-game-primary/10 px-4 py-2 rounded-xl border-2 border-game-primary shadow-[0_0_20px_rgba(0,255,136,0.3)]">
+                <span id="timer-value">0.0</span>s
+            </div>
+        </main>
+
+        <!-- Rules Panel -->
+        <aside class="bg-game-bg-secondary/90 backdrop-blur-lg border-t-2 border-game-primary/20 p-4 md:p-6 max-h-[35vh] overflow-y-auto">
+            <h2 class="text-base font-bold tracking-wide mb-3 text-game-primary uppercase">
+                📋 Active Rules
+            </h2>
+            <div id="rules-list" class="flex flex-col gap-2">
+                <p class="text-gray-400 italic text-center py-4">Press the buzzer to begin...</p>
+            </div>
+        </aside>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="hidden fixed inset-0 bg-black/95 backdrop-blur-xl flex items-center justify-center z-[1000] opacity-0 pointer-events-none transition-opacity duration-500">
+            <div class="text-center p-8 max-w-lg animate-bounce-in">
+
+                <!-- Game Over Title -->
+                <h1 class="text-5xl md:text-6xl font-black text-game-danger mb-8 animate-pulse drop-shadow-[0_0_30px_rgba(255,0,85,0.8)]">
+                    💥 EXPLODED!
+                </h1>
+
+                <!-- Final Stats -->
+                <div class="flex gap-8 justify-center mb-8">
+                    <div class="flex flex-col gap-2">
+                        <span class="text-sm text-gray-400 uppercase tracking-wider">Final Score</span>
+                        <span id="final-score" class="text-4xl font-bold text-game-primary">0</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <span class="text-sm text-gray-400 uppercase tracking-wider">Level Reached</span>
+                        <span id="final-level" class="text-4xl font-bold text-game-primary">1</span>
+                    </div>
+                </div>
+
+                <!-- Violation Info -->
+                <div class="bg-game-danger/10 border-2 border-game-danger rounded-xl p-4 md:p-6 mb-8">
+                    <h3 class="text-base font-bold text-game-danger mb-2 uppercase">Rule Violated:</h3>
+                    <p id="violation-message" class="text-base md:text-lg leading-relaxed text-white"></p>
+                </div>
+
+                <!-- Restart Button -->
+                <button id="restart-btn"
+                        class="bg-gradient-to-r from-game-primary to-green-500 text-game-bg px-8 py-4 text-xl font-bold rounded-xl uppercase tracking-wider transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(0,255,136,0.6)] active:translate-y-0 shadow-[0_5px_20px_rgba(0,255,136,0.4)]">
+                    Play Again
+                </button>
+            </div>
+        </div>
+
+        <!-- Explosion Particles Container -->
+        <div id="explosion-container" class="absolute inset-0 pointer-events-none z-[500]"></div>
+
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/rules.js"></script>
+    <script src="js/buzzer.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
